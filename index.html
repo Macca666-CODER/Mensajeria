@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Chat con Papá 💬</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --secondary-color: #f0f2f5;
+            --bg-color: #ffffff;
+            --text-color: #333;
+            --border-color: #e0e0e0;
+            --message-bg-self: #dcf8c6;
+            /* Verde claro como WhatsApp */
+            --message-bg-other: #ffffff;
+            /* Blanco para otros */
+            --message-border-radius: 18px;
+            --shadow: rgba(0, 0, 0, 0.05);
+        }
+
+        body {
+            margin: 0;
+            padding-bottom: 70px;
+            /* Espacio para el formulario fijo */
+            font-family: 'Inter', sans-serif;
+            background-color: var(--secondary-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        #chat-container {
+            max-width: 600px;
+            width: 100%;
+            margin: 0 auto;
+            flex-grow: 1;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #messages {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+            flex-grow: 1;
+        }
+
+        #messages li {
+            padding: 8px 12px;
+            margin-bottom: 10px;
+            border-radius: var(--message-border-radius);
+            max-width: 80%;
+            position: relative;
+            box-shadow: 0 1px 1px var(--shadow);
+            word-wrap: break-word;
+            /* Rompe palabras largas */
+        }
+
+        #messages li.self {
+            background-color: var(--message-bg-self);
+            align-self: flex-end;
+            margin-left: auto;
+        }
+
+        #messages li.other {
+            background-color: var(--message-bg-other);
+            align-self: flex-start;
+            margin-right: auto;
+            border: 1px solid var(--border-color);
+            /* Borde para mensajes de otros */
+        }
+
+        .message-info {
+            font-size: 0.7em;
+            color: #777;
+            margin-top: 5px;
+            text-align: right;
+            line-height: 1;
+        }
+
+        #form {
+            background: var(--bg-color);
+            padding: 10px;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            align-items: center;
+            box-sizing: border-box;
+            border-top: 1px solid var(--border-color);
+            box-shadow: 0 -2px 5px var(--shadow);
+        }
+
+        #input {
+            border: 1px solid var(--border-color);
+            padding: 10px 15px;
+            flex-grow: 1;
+            border-radius: 25px;
+            margin-right: 10px;
+            font-size: 1em;
+        }
+
+        #input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+        }
+
+        #form>button {
+            background: var(--primary-color);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            outline: none;
+            color: #fff;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        #form>button:hover {
+            background: #0056b3;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            margin-top: 20px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="chat-container">
+        <h1>Chat con Papá 💬</h1>
+        <ul id="messages"></ul>
+    </div>
+
+    <form id="form" action="">
+        <input id="input" autocomplete="off" placeholder="Escribe tu mensaje..." />
+        <button type="submit">Enviar</button>
+    </form>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        const form = document.getElementById('form');
+        const input = document.getElementById('input');
+        const messages = document.getElementById('messages');
+
+        let mySocketId = ''; // Para identificar nuestros propios mensajes
+
+        // Obtener el ID del socket al conectar
+        socket.on('connect', () => {
+            mySocketId = socket.id;
+        });
+
+        // Función para añadir un mensaje al DOM
+        function addMessage(msg) {
+            const item = document.createElement('li');
+            item.textContent = msg.text;
+
+            // Añadir clase 'self' o 'other'
+            if (msg.sender === mySocketId) {
+                item.classList.add('self');
+            } else {
+                item.classList.add('other');
+            }
+
+            const info = document.createElement('div');
+            info.classList.add('message-info');
+            info.textContent = msg.timestamp + (msg.sender === mySocketId ? ' (Tú)' : ''); // Muestra "Tú" en tus mensajes
+            item.appendChild(info);
+
+            messages.appendChild(item);
+            window.scrollTo(0, document.body.scrollHeight); // Auto-scroll
+        }
+
+        // Recibir historial de mensajes al conectarse
+        socket.on('history', (historyMessages) => {
+            messages.innerHTML = ''; // Limpiar mensajes actuales antes de cargar el historial
+            historyMessages.forEach(msg => addMessage(msg));
+        });
+
+        // Cuando envías el formulario
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (input.value) {
+                socket.emit('chat message', input.value);
+                input.value = '';
+            }
+        });
+
+        // Cuando el servidor envía un nuevo mensaje, lo recibimos y lo mostramos
+        socket.on('chat message', (msg) => {
+            addMessage(msg);
+        });
+    </script>
+</body>
+
+</html>
